@@ -6,3 +6,4 @@ flask-sqlalchemy
 flask-jwt-extended
 passlib   #used for protecting the passsword ,so that even when someone get access to the database..they cannot see it
 flask-migrate
+gunicorn
