@@ -22,6 +22,12 @@ def create_app(db_url=None):
     app = Flask(__name__)
     load_dotenv()
 
+    redis_url = os.getenv("REDIS_URL")
+    print(f"REDIS_URL: {redis_url}")  # This will show the Redis URL loaded from the environment
+    if not redis_url:
+        raise ValueError("REDIS_URL environment variable not set properly!")
+
+
     # Configure Redis Queue for background tasks (e.g., email sending)
     connection = redis.from_url(os.getenv("REDIS_URL"))
     app.queue = Queue("emails", connection=connection)
