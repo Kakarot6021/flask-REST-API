@@ -9,3 +9,6 @@ flask-migrate
 gunicorn
 psycopg2-binary
 requests
+rq
+redis
+sib_api_v3_sdk

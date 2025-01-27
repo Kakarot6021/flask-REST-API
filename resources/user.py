@@ -1,24 +1,20 @@
 from db import db
-from flask_smorest import abort,Blueprint
+from flask_smorest import abort, Blueprint
 from passlib.hash import pbkdf2_sha256
 from flask.views import MethodView
 
+from flask import current_app
+import redis
+from rq import Queue
+from tasks import send_user_registration_email  # Import the new Brevo email function
+
 from models import UserModel
-from schemas import userSchema 
+from schemas import userSchema,userRegisterSchema
 import requests
-from flask_jwt_extended import create_access_token,jwt_required,get_jwt,create_refresh_token,get_jwt_identity
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt, create_refresh_token, get_jwt_identity
 from blockList import BLOCKLIST
 
-blp=Blueprint("User","users",description="operation on users")
-
-def send_simple_message(to,subject,body):
-  	return requests.post(
-  		"https://api.mailgun.net/v3/sandbox232d8ea5b5e04f6ba2f364cc7e38de53.mailgun.org/messages",
-  		auth=("api", "YOUR_API_KEY"),
-  		data={"from": "Excited User  <mailgun@sandbox232d8ea5b5e04f6ba2f364cc7e38de53.mailgun.org>",
-  			"to": [to],
-  			"subject": subject,
-  			"text": body })
+blp = Blueprint("User", "users", description="Operations on users")
 
 @blp.route("/logout")
 class UserLogout(MethodView):
@@ -30,31 +26,27 @@ class UserLogout(MethodView):
 
 @blp.route("/register")
 class UserRegister(MethodView):
-    @blp.arguments(userSchema)
-    def post(self,user_data):
-        if UserModel.query.filter(UserModel.username==user_data["username"]).first():
-            abort(404,message="Username alreay exists..")
+    @blp.arguments(userRegisterSchema)
+    def post(self, user_data):
+        if UserModel.query.filter(UserModel.username == user_data["username"]).first():
+            abort(404, message="Username already exists..")
 
-        user=UserModel(
+        user = UserModel(
             username=user_data["username"],
+            email=user_data["email"],
             password=pbkdf2_sha256.hash(user_data["password"])
         )
-        # print(f"user_name is {user_data["username"]}")
-        # print(f"password is {user_data["password"]}")
+        
         db.session.add(user)
         db.session.commit()
 
-        return {"message":"User Created Successfully"},201
-        
+        # Enqueue email task using the new Brevo email function
+        current_app.queue.enqueue(send_user_registration_email, user.email, user.username)
+
+        return {"message": "User Created Successfully"}, 201
+
 @blp.route("/user/<int:user_id>")
 class User(MethodView):
-    """
-    This resource can be useful when testing our Flask app.
-    We may not want to expose it to public users, but for the
-    sake of demonstration in this course, it can be useful
-    when we are manipulating data regarding the users.
-    """
-
     @blp.response(200, userSchema)
     def get(self, user_id):
         user = UserModel.query.get_or_404(user_id)
@@ -65,50 +57,3 @@ class User(MethodView):
         db.session.delete(user)
         db.session.commit()
         return {"message": "User deleted."}, 200
-
-# @blp.route("/login")
-# class UserLogin(MethodView):
-#     @blp.arguments(userSchema)
-#     def post(self, user_data):
-#         user = UserModel.query.filter(                      #this checks wheteher user exists or not..
-#             UserModel.username == user_data["username"]
-#         ).first()
-
-#         if user and pbkdf2_sha256.verify(user_data["password"], user.password):   #here its verifying that stored password abd recieveid passwrd are same...
-#             access_token = create_access_token(identity=str(user.id))           #we don't unhash the password in the databse...we hash the recieved password and then compare it.
-#             return {"access_token": access_token}, 200
-
-#         abort(401, message="Invalid credentials.")
-
-@blp.route("/login")
-class UserLogin(MethodView):
-    @blp.arguments(userSchema)
-    def post(self, user_data):
-        # Log user input and data from DB
-        print(f"Received Username: {user_data['username']}")
-        
-        user = UserModel.query.filter_by(username = user_data["username"]).first()
-        print(user.id)
-        if user:
-            print(f"Found user: {user.username}")
-            if pbkdf2_sha256.verify(user_data["password"], user.password):
-                access_token = create_access_token(identity=str(user.id), fresh=True)
-                refresh_token = create_refresh_token(user.id)
-                return {"access_token": access_token, "refresh_token": refresh_token}, 200
-            else:
-                print("Password mismatch!")
-        else:
-            print("User not found!")
-
-        abort(401, message="Invalid credentials.")
-
-@blp.route("/refresh")
-class TokenRefresh(MethodView):
-    @jwt_required(refresh=True)
-    def post(self):
-        current_user = get_jwt_identity()
-        new_token = create_access_token(identity=current_user, fresh=False)
-        # Make it clear that when to add the refresh token to the blocklist will depend on the app design
-        jti = get_jwt()["jti"]
-        BLOCKLIST.add(jti)
-        return {"access_token": new_token}, 200

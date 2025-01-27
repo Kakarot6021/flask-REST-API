@@ -48,3 +48,6 @@ class userSchema(Schema):
      id=fields.Int(load_only=True)
      username=fields.Str(required=True)
      password=fields.Str(required=True,load_only=True) #most imporatant thing we have done.password can never be shown to the client
+
+class userRegisterSchema(userSchema):
+     email=fields.Str(required=True)   
