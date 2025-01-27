@@ -19,11 +19,11 @@ def send_email_via_brevo(to_email, username):
     configuration = sib_api_v3_sdk.Configuration()
     configuration.api_key['api-key'] = api_key
     api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
-
+    print("API KEY " is {api_key})
     # Create email object
     send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
         to=[{"email": to_email}],
-        sender={"email": "your_email@domain.com", "name": "YourApp Name"},
+        sender={"email": "ashisha6021@gmail.com", "name": "YourApp Name"},
         subject="Welcome to Our App!",
         html_content=f"<html><body><h1>Hi {username},</h1><p>Thank you for registering!</p></body></html>"
     )
