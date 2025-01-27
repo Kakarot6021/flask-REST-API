@@ -8,6 +8,7 @@ from flask_migrate import Migrate
 import models
 import os
 
+from dotenv import load_dotenv
 
 from resources.item import blp as ItemBlueprint
 from resources.store import blp as StoreBlueprint
@@ -18,6 +19,7 @@ from blockList import BLOCKLIST     #IT's for adding logout
 
 def create_app(db_url=None):
     app=Flask(__name__)
+    load_dotenv()
 
     app.config["PROPAGATE_EXCEPTION"]=True
     app.config["API_TITLE"]="Store REST API"

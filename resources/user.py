@@ -4,12 +4,21 @@ from passlib.hash import pbkdf2_sha256
 from flask.views import MethodView
 
 from models import UserModel
-from schemas import userSchema
-
+from schemas import userSchema 
+import requests
 from flask_jwt_extended import create_access_token,jwt_required,get_jwt,create_refresh_token,get_jwt_identity
 from blockList import BLOCKLIST
 
 blp=Blueprint("User","users",description="operation on users")
+
+def send_simple_message(to,subject,body):
+  	return requests.post(
+  		"https://api.mailgun.net/v3/sandbox232d8ea5b5e04f6ba2f364cc7e38de53.mailgun.org/messages",
+  		auth=("api", "YOUR_API_KEY"),
+  		data={"from": "Excited User  <mailgun@sandbox232d8ea5b5e04f6ba2f364cc7e38de53.mailgun.org>",
+  			"to": [to],
+  			"subject": subject,
+  			"text": body })
 
 @blp.route("/logout")
 class UserLogout(MethodView):
